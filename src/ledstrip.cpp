@@ -1,7 +1,10 @@
+//#include <BluetoothSerial.h>
 #include <esp_random.h>
 #include "ledstrip.h"
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
+
+extern HardwareSerial Debug;
 
 void LedStrip::reset()
 {
@@ -38,7 +41,6 @@ void LedStrip::rainbow()
 {
     // FastLED's built-in rainbow generator
     fill_rainbow(leds, NUM_LEDS, gHue, 7);
-
 }
 
 void LedStrip::off()
@@ -78,47 +80,70 @@ void LedStrip::sinelon()
     leds[pos] += CHSV(gHue, 255, 192);
 }
 
+void LedStrip::purple()
+{
+    // FastLED's built-in rainbow generator
+    fill_solid(leds, NUM_LEDS, CRGB(255, 0, 255));
+    addGlitter(80);
+}
+
+void LedStrip::pink()
+{
+    // FastLED's built-in rainbow generator
+    fill_solid(leds, NUM_LEDS, CRGB(255, 100, 100));
+    addGlitter(80);
+}
+
+void LedStrip::blue()
+{
+    // FastLED's built-in rainbow generator
+    fill_solid(leds, NUM_LEDS, CRGB(0, 0, 255));
+    addGlitter(80);
+}
+
 // List of patterns to cycle through.  Each is defined as a separate function below.
 
 void LedStrip::nextPattern()
 {
-    currentVisualizerId = (++currentVisualizerId>=7)?0:currentVisualizerId;
-    //order: rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, off
-    Serial.println(currentVisualizerId);
-    if (currentVisualizerId == 0) 
+    currentVisualizerId = (++currentVisualizerId >= 9) ? 0 : currentVisualizerId;
+    // order: rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, off
+    Debug.println(currentVisualizerId);
+    switch (currentVisualizerId)
     {
-        currentVisualizer = &LedStrip::rainbow;
-    }
-    if (currentVisualizerId == 1) 
-    {
+    case 0:
         currentVisualizer = &LedStrip::rainbowWithGlitter;
-    }
-    if (currentVisualizerId == 2) 
-    {
+        break;
+    case 1:
         currentVisualizer = &LedStrip::confetti;
-    }
-    if (currentVisualizerId == 3) 
-    {
+        break;
+    case 2:
         currentVisualizer = &LedStrip::sinelon;
-    }
-    if (currentVisualizerId == 4) 
-    {
+        break;
+    case 3:
         currentVisualizer = &LedStrip::juggle;
-    }
-    if (currentVisualizerId == 5) 
-    {
+    case 4:
         currentVisualizer = &LedStrip::bpm;
-    }
-    if (currentVisualizerId == 6) 
-    {
+        break;
+    case 5:
+        currentVisualizer = &LedStrip::purple;
+        break;
+    case 6:
+        currentVisualizer = &LedStrip::pink;
+        break;
+    case 7:
+        currentVisualizer = &LedStrip::blue;
+        break;
+    default:
         currentVisualizer = &LedStrip::off;
+
+        break;
     }
 }
 
 void LedStrip::run()
 {
     unsigned long curMillis = millis();
-    if (nextMillis< curMillis)
+    if (nextMillis < curMillis)
     {
         nextMillis = curMillis + period;
         (this->*currentVisualizer)();
@@ -156,11 +181,11 @@ LedStrip::LedStrip()
 {
     FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
     FastLED.setBrightness(LedStrip::brightness);
+    FastLED.setMaxPowerInVoltsAndMilliamps(3, 500);
 }
 
 LedStrip::~LedStrip()
 {
 }
-
 
 LedStrip ledStrip = LedStrip();

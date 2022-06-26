@@ -8,7 +8,7 @@
 class LedStrip
 {
   typedef void (LedStrip::*SimplePatternList[])();
-  static const byte brightness = 42, framesPerSecond = 90;
+  static const byte brightness = 10, framesPerSecond = 90;
   static const unsigned long period = 1000/framesPerSecond;
   CRGBArray<NUM_LEDS> leds;
   byte gCurrentPatternNumber = 0; // Index number of which pattern is current
@@ -23,12 +23,15 @@ class LedStrip
   void rainbowWithGlitter();
   void confetti();
   void sinelon();
+  void purple();
+  void pink();
+  void blue();
 
-  byte currentVisualizerId = 0;
+  byte currentVisualizerId = 2;
 
   typedef void (LedStrip::*visualizer)();
 
-  visualizer currentVisualizer = &LedStrip::rainbow;
+  visualizer currentVisualizer = &LedStrip::confetti;
 
   unsigned long nextMillis = 0;
 
