@@ -11,7 +11,6 @@ class LedStrip
   static const byte brightness = 10, framesPerSecond = 90;
   static const unsigned long period = 1000/framesPerSecond;
   CRGBArray<NUM_LEDS> leds;
-  byte gCurrentPatternNumber = 0; // Index number of which pattern is current
   byte gHue = 0;                  // rotating "base color" used by many of the patterns
 
   // List of patterns to cycle through.  Each is defined as a separate function below.
@@ -27,11 +26,9 @@ class LedStrip
   void pink();
   void blue();
 
-  byte currentVisualizerId = 2;
-
   typedef void (LedStrip::*visualizer)();
 
-  visualizer currentVisualizer = &LedStrip::confetti;
+  LedStrip::visualizer getPattern();
 
   unsigned long nextMillis = 0;
 
@@ -42,6 +39,7 @@ public:
   void reset();
 
   void nextPattern();
+  void setPattern(byte visualizerId);
   void run();
   void ledOn(byte ledNumber);
   void ledOff(byte ledNumber);

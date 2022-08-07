@@ -8,13 +8,13 @@
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
 
+#include "options.h"
 
 #include "ledstrip.h"
 
 AsyncWebServer server(80);
-const char *ssid = "mrichana";
-const char *password = "2106009557";
-const char *PARAM_MESSAGE = "message";
+const char *ssid = "mrichana3g";
+const char *password = "6972427823";
 
 void notFound(AsyncWebServerRequest *request)
 {
@@ -100,6 +100,28 @@ void onMidiDisconnect()
   ESP.restart();
 }
 
+bool connectToPiano()
+{
+  int nDevices = BLEMidiClient.scan();
+  // BLEMidiClient.getScannedDevice(0).
+  if (nDevices = 0)
+  {
+    options.midiConnected = false;
+    return options.midiConnected;
+  }
+  if (BLEMidiClient.connect(0))
+  {
+    Debug.println("Piano connection established");
+    options.midiConnected = true;
+  }
+  else
+  {
+    Debug.println("Piano connection failed");
+    options.midiConnected = false;
+  }
+  return options.midiConnected;
+}
+
 void setup()
 {
   // Debug.begin("PianoLights Debug");
@@ -129,31 +151,39 @@ void setup()
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/index.html", String(), false);
-  });
-
-  // Send a GET request to <IP>/get?message=<message>
-  server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(SPIFFS, "/index.html", String(), false); });
+  server.on("/startMidi", HTTP_POST, [](AsyncWebServerRequest *request)
             {
-        String message;
-        if (request->hasParam(PARAM_MESSAGE)) {
-            message = request->getParam(PARAM_MESSAGE)->value();
-        } else {
-            message = "No message sent";
-        }
-        request->send(200, "text/plain", "Hello, GET: " + message); });
+              connectToPiano();
+              return request->send(200, "text/json", options.json()); });
+  server.on("/setPattern", HTTP_POST, [](AsyncWebServerRequest *request) 
+            { 
+              String message;
+              if (request->hasParam("pattern")) {
+                message = request->getParam("pattern")->value();
+              } else {
+                request->send(400, "text/plain", "No pattern id");
+              }
+              byte id = message.toInt();
+              ledStrip.setPattern(id); 
 
-  // Send a POST request to <IP>/post with a form field message set to <message>
-  server.on("/post", HTTP_POST, [](AsyncWebServerRequest *request)
-            {
-        String message;
-        if (request->hasParam(PARAM_MESSAGE, true)) {
-            message = request->getParam(PARAM_MESSAGE, true)->value();
-        } else {
-            message = "No message sent";
-        }
-        request->send(200, "text/plain", "Hello, POST: " + message); });
+              request->send(200, "text/json", options.json());
+            });
+  server.on("/setSparkle", HTTP_POST, [](AsyncWebServerRequest *request) 
+            { 
+              String message;
+              if (request->hasParam("sparkle")) {
+                message = request->getParam("sparkle")->value();
+              } else {
+                request->send(400, "text/plain", "No value");
+              }
+              message.toLowerCase(); 
+              options.sparkle = (message=="true");
+
+              request->send(200, "text/json", options.json());
+            });
+  server.serveStatic("/", SPIFFS, "");
 
   server.onNotFound(notFound);
 
@@ -172,9 +202,6 @@ void loop()
   {
     ledStrip.run();
 
-    // send the 'leds' array out to the actual LED strip
-    // insert a delay to keep the framerate modest
-
     if (button.singleClick() == true)
     {
       Debug.println("Next Pattern");
@@ -183,17 +210,7 @@ void loop()
     if (button.longPress() == true)
     {
       Debug.println("Client Connect");
-      int nDevices = BLEMidiClient.scan();
-      // BLEMidiClient.getScannedDevice(0).
-      if (nDevices > 0)
-      {
-        if (BLEMidiClient.connect(0))
-          Debug.println("Piano connection established");
-        else
-        {
-          Debug.println("Piano connection failed");
-        }
-      }
+      connectToPiano();
     }
     // do some periodic updates
   }

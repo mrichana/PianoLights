@@ -1,5 +1,5 @@
-//#include <BluetoothSerial.h>
 #include <esp_random.h>
+#include "options.h"
 #include "ledstrip.h"
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
@@ -12,6 +12,7 @@ void LedStrip::reset()
     FastLED.show();
 }
 
+#pragma region Patterns
 void LedStrip::bpm()
 {
 
@@ -57,13 +58,6 @@ void LedStrip::addGlitter(fract8 chanceOfGlitter)
     }
 }
 
-void LedStrip::rainbowWithGlitter()
-{
-    // built-in FastLED rainbow, plus some random sparkly glitter
-    rainbow();
-    addGlitter(80);
-}
-
 void LedStrip::confetti()
 {
     // random colored speckles that blink in and fade smoothly
@@ -84,60 +78,79 @@ void LedStrip::purple()
 {
     // FastLED's built-in rainbow generator
     fill_solid(leds, NUM_LEDS, CRGB(255, 0, 255));
-    addGlitter(80);
 }
 
 void LedStrip::pink()
 {
     // FastLED's built-in rainbow generator
-    fill_solid(leds, NUM_LEDS, CRGB(255, 100, 100));
-    addGlitter(80);
+    fill_solid(leds, NUM_LEDS, CRGB(128, 0, 0));
 }
 
 void LedStrip::blue()
 {
     // FastLED's built-in rainbow generator
     fill_solid(leds, NUM_LEDS, CRGB(0, 0, 255));
-    addGlitter(80);
 }
 
-// List of patterns to cycle through.  Each is defined as a separate function below.
+#pragma endregion
+
+LedStrip::visualizer LedStrip::getPattern()
+{
+    static uint8_t lastVisualizerId = -1;
+    static LedStrip::visualizer currentVisualizer;
+    if (lastVisualizerId != options.visualizerId)
+    {
+        lastVisualizerId = options.visualizerId;
+        Debug.print("getPattern():");
+        Debug.println(options.visualizerId);
+
+        switch (options.visualizerId)
+        {
+        case 0:
+            currentVisualizer = &LedStrip::rainbow;
+            break;
+        case 1:
+            currentVisualizer = &LedStrip::confetti;
+            break;
+        case 2:
+            currentVisualizer = &LedStrip::sinelon;
+            break;
+        case 3:
+            currentVisualizer = &LedStrip::juggle;
+        case 4:
+            currentVisualizer = &LedStrip::bpm;
+            break;
+        case 5:
+            currentVisualizer = &LedStrip::purple;
+            break;
+        case 6:
+            currentVisualizer = &LedStrip::pink;
+            break;
+        case 7:
+            currentVisualizer = &LedStrip::blue;
+            break;
+        default:
+            currentVisualizer = &LedStrip::off;
+            break;
+        }
+    }
+    return currentVisualizer;
+}
 
 void LedStrip::nextPattern()
 {
-    currentVisualizerId = (++currentVisualizerId >= 9) ? 0 : currentVisualizerId;
-    // order: rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, off
-    Debug.println(currentVisualizerId);
-    switch (currentVisualizerId)
-    {
-    case 0:
-        currentVisualizer = &LedStrip::rainbowWithGlitter;
-        break;
-    case 1:
-        currentVisualizer = &LedStrip::confetti;
-        break;
-    case 2:
-        currentVisualizer = &LedStrip::sinelon;
-        break;
-    case 3:
-        currentVisualizer = &LedStrip::juggle;
-    case 4:
-        currentVisualizer = &LedStrip::bpm;
-        break;
-    case 5:
-        currentVisualizer = &LedStrip::purple;
-        break;
-    case 6:
-        currentVisualizer = &LedStrip::pink;
-        break;
-    case 7:
-        currentVisualizer = &LedStrip::blue;
-        break;
-    default:
-        currentVisualizer = &LedStrip::off;
+    byte visualizerId = (++(options.visualizerId) >= 9) ? 0 : options.visualizerId;
+    setPattern(visualizerId);
+}
 
-        break;
-    }
+void LedStrip::setPattern(byte visualizerId)
+{
+    // order: rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, off
+    if (visualizerId < 0 || visualizerId >= 9)
+        return;
+
+    options.visualizerId = visualizerId;
+    Debug.println(options.visualizerId);
 }
 
 void LedStrip::run()
@@ -146,7 +159,8 @@ void LedStrip::run()
     if (nextMillis < curMillis)
     {
         nextMillis = curMillis + period;
-        (this->*currentVisualizer)();
+        (this->*getPattern())();
+        if (options.sparkle) addGlitter(80);
         FastLED.show();
         EVERY_N_MILLISECONDS(20) { gHue++; } // slowly cycle the "base color" through the rainbow
     }
@@ -179,6 +193,9 @@ void LedStrip::ledOffFromNote(byte note, byte intensity)
 
 LedStrip::LedStrip()
 {
+    options.visualizerId = 2;
+    setPattern(options.visualizerId);
+    options.sparkle = false;
     FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
     FastLED.setBrightness(LedStrip::brightness);
     FastLED.setMaxPowerInVoltsAndMilliamps(3, 500);
