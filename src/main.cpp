@@ -13,8 +13,8 @@
 #include "ledstrip.h"
 
 AsyncWebServer server(80);
-const char *ssid = "mrichana3g";
-const char *password = "6972427823";
+const char *ssid = "mrichana";
+const char *password = "2106009557";
 
 void notFound(AsyncWebServerRequest *request)
 {
@@ -124,9 +124,12 @@ bool connectToPiano()
 
 void setup()
 {
+
   // Debug.begin("PianoLights Debug");
   Debug.begin(115200);
   Debug.println("Initializing bluetooth");
+  // options.init();
+
   BLEMidiServer.begin("Piano Lights");
 
   BLEMidiServer.setOnConnectCallback(onMidiConnect);
@@ -147,12 +150,10 @@ void setup()
 
   // BLEMidiClient.enableDebugging(); // Uncomment to see debugging messages from the library
 
-  SPIFFS.begin(false);
+  SPIFFS.begin(false, "/spiffs", 4);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SPIFFS, "/index.html", String(), false); });
   server.on("/startMidi", HTTP_POST, [](AsyncWebServerRequest *request)
             {
               connectToPiano();
@@ -179,11 +180,19 @@ void setup()
                 request->send(400, "text/plain", "No value");
               }
               message.toLowerCase(); 
-              options.sparkle = (message=="true");
+              options.setSparkle(message=="true");
 
               request->send(200, "text/json", options.json());
             });
-  server.serveStatic("/", SPIFFS, "");
+  
+  server.on("/polyfills.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/www/polyfills.js", "text/javascript");});
+  server.on("/main.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/www/main.js", "text/javascript");});
+  server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/www/styles.css", "text/css");});
+  
+  server.serveStatic("/", SPIFFS, "/www/").setDefaultFile("index.html");
 
   server.onNotFound(notFound);
 

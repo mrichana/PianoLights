@@ -15,7 +15,6 @@ void LedStrip::reset()
 #pragma region Patterns
 void LedStrip::bpm()
 {
-
     // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
     uint8_t BeatsPerMinute = 62;
     CRGBPalette16 palette = PartyColors_p;
@@ -24,6 +23,7 @@ void LedStrip::bpm()
     { // 9948
         leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
     }
+    Debug.print("bpm");
 }
 
 void LedStrip::juggle()
@@ -36,17 +36,22 @@ void LedStrip::juggle()
         leds[beatsin16(i + 7, 0, NUM_LEDS - 1)] |= CHSV(dothue, 200, 255);
         dothue += 32;
     }
+        Debug.print("juggle");
 }
 
 void LedStrip::rainbow()
 {
     // FastLED's built-in rainbow generator
     fill_rainbow(leds, NUM_LEDS, gHue, 7);
+        Debug.print("rainbow");
+
 }
 
 void LedStrip::off()
 {
     reset();
+        Debug.print("off");
+
 }
 
 void LedStrip::addGlitter(fract8 chanceOfGlitter)
@@ -64,6 +69,8 @@ void LedStrip::confetti()
     fadeToBlackBy(leds, NUM_LEDS, 10);
     int pos = random16(NUM_LEDS);
     leds[pos] += CHSV(gHue + random8(64), 200, 255);
+        Debug.print("confetti");
+
 }
 
 void LedStrip::sinelon()
@@ -72,24 +79,27 @@ void LedStrip::sinelon()
     fadeToBlackBy(leds, NUM_LEDS, 20);
     int pos = beatsin16(13, 0, NUM_LEDS - 1);
     leds[pos] += CHSV(gHue, 255, 192);
+        Debug.print("sinelon");
+
 }
 
 void LedStrip::purple()
 {
-    // FastLED's built-in rainbow generator
     fill_solid(leds, NUM_LEDS, CRGB(255, 0, 255));
+        Debug.print("purple");
+
 }
 
 void LedStrip::pink()
 {
-    // FastLED's built-in rainbow generator
-    fill_solid(leds, NUM_LEDS, CRGB(128, 0, 0));
+    fill_solid(leds, NUM_LEDS, CRGB(255, 128, 128));
+        Debug.print("pink");
 }
 
 void LedStrip::blue()
 {
-    // FastLED's built-in rainbow generator
     fill_solid(leds, NUM_LEDS, CRGB(0, 0, 255));
+        Debug.print("blue");
 }
 
 #pragma endregion
@@ -98,13 +108,12 @@ LedStrip::visualizer LedStrip::getPattern()
 {
     static uint8_t lastVisualizerId = -1;
     static LedStrip::visualizer currentVisualizer;
-    if (lastVisualizerId != options.visualizerId)
+    unsigned char VisualizerId = options.getVisualizerId();
+    if (lastVisualizerId != VisualizerId)
     {
-        lastVisualizerId = options.visualizerId;
-        Debug.print("getPattern():");
-        Debug.println(options.visualizerId);
+        lastVisualizerId = VisualizerId;
 
-        switch (options.visualizerId)
+        switch (VisualizerId)
         {
         case 0:
             currentVisualizer = &LedStrip::rainbow;
@@ -139,7 +148,8 @@ LedStrip::visualizer LedStrip::getPattern()
 
 void LedStrip::nextPattern()
 {
-    byte visualizerId = (++(options.visualizerId) >= 9) ? 0 : options.visualizerId;
+//    byte visualizerId = (options.getVisualizerId() >= 8) ? 0 : options.getVisualizerId();
+    unsigned char visualizerId = ((options.getVisualizerId() + 1) + (8 + 1)) % (8 + 1);
     setPattern(visualizerId);
 }
 
@@ -149,8 +159,7 @@ void LedStrip::setPattern(byte visualizerId)
     if (visualizerId < 0 || visualizerId >= 9)
         return;
 
-    options.visualizerId = visualizerId;
-    Debug.println(options.visualizerId);
+    options.setVisualizerId(visualizerId);
 }
 
 void LedStrip::run()
@@ -160,7 +169,7 @@ void LedStrip::run()
     {
         nextMillis = curMillis + period;
         (this->*getPattern())();
-        if (options.sparkle) addGlitter(80);
+        if (options.getSparkle()) addGlitter(80);
         FastLED.show();
         EVERY_N_MILLISECONDS(20) { gHue++; } // slowly cycle the "base color" through the rainbow
     }
@@ -193,9 +202,7 @@ void LedStrip::ledOffFromNote(byte note, byte intensity)
 
 LedStrip::LedStrip()
 {
-    options.visualizerId = 2;
-    setPattern(options.visualizerId);
-    options.sparkle = false;
+    setPattern(options.getVisualizerId());
     FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
     FastLED.setBrightness(LedStrip::brightness);
     FastLED.setMaxPowerInVoltsAndMilliamps(3, 500);
