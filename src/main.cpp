@@ -1,12 +1,14 @@
 #include <Arduino.h>
+
 #include <BLEMidi.h>
 #include <avdweb_Switch.h>
-//#include <BluetoothSerial.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <AsyncTCP.h>
+#include <ESPmDNS.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
+
+#include "debug.h"
 
 #include "options.h"
 
@@ -15,6 +17,13 @@
 AsyncWebServer server(80);
 const char *ssid = "mrichana";
 const char *password = "2106009557";
+const char *mDSNName = "pianolights";
+
+void ESP32reset()
+{
+  ledStrip.reset();
+  ESP.restart();
+}
 
 void notFound(AsyncWebServerRequest *request)
 {
@@ -23,7 +32,6 @@ void notFound(AsyncWebServerRequest *request)
 
 #define BUTTON_PIN 18
 Switch button = Switch(BUTTON_PIN);
-HardwareSerial Debug = Serial;
 
 void onNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
@@ -95,42 +103,65 @@ void onMidiConnect()
 
 void onMidiDisconnect()
 {
-  ledStrip.reset();
-  Debug.println("Disconnected");
-  ESP.restart();
+  ESP32reset();
 }
 
 bool connectToPiano()
 {
+  ledStrip.reset();
+  btStart();
+  BLEMidiClient.begin("Piano Lights Client");
   int nDevices = BLEMidiClient.scan();
-  // BLEMidiClient.getScannedDevice(0).
-  if (nDevices = 0)
-  {
-    options.midiConnected = false;
-    return options.midiConnected;
-  }
-  if (BLEMidiClient.connect(0))
+  if (nDevices > 0 && BLEMidiClient.connect(0))
   {
     Debug.println("Piano connection established");
     options.midiConnected = true;
+    BLEMidiClient.setNoteOnCallback(onClientNoteOn);
+    BLEMidiClient.setNoteOffCallback(onClientNoteOff);
+    BLEMidiClient.setOnDisconnectCallback(onMidiDisconnect);
+    ledStrip.ledOn(0, 0, 255, 0);
+    delay(200);
+    ledStrip.ledOff(0);
+    delay(200);
+    ledStrip.ledOn(0, 0, 255, 0);
+    delay(200);
+    ledStrip.ledOff(0);
+    delay(200);
+    ledStrip.ledOn(0, 0, 255, 0);
+    delay(200);
+    ledStrip.ledOff(0);
   }
   else
   {
     Debug.println("Piano connection failed");
     options.midiConnected = false;
-  }
+    ledStrip.ledOn(0, 255, 0, 0);
+    delay(200);
+    ledStrip.ledOff(0);
+    delay(200);
+    ledStrip.ledOn(0, 255, 0, 0);
+    delay(200);
+    ledStrip.ledOff(0);
+    delay(200);
+    ledStrip.ledOn(0, 255, 0, 0);
+    delay(200);
+    ledStrip.ledOff(0);
+    ESP32reset();
+   }
   return options.midiConnected;
 }
 
 void setup()
 {
+  btStop();
 
   // Debug.begin("PianoLights Debug");
   Debug.begin(115200);
-  Debug.println("Initializing bluetooth");
-  // options.init();
+  options.init();
+  ledStrip.init();
+  Debug.println(options.json());
 
-  BLEMidiServer.begin("Piano Lights");
+  //BLEMidiServer.begin("Piano Lights");
 
   BLEMidiServer.setOnConnectCallback(onMidiConnect);
   BLEMidiServer.setOnDisconnectCallback(onMidiDisconnect);
@@ -142,24 +173,41 @@ void setup()
   // BLEMidiServer.setProgramChangeCallback(onProgramChange);
   // BLEMidiServer.setAfterTouchCallback(onAfterTouch);
   // BLEMidiServer.setPitchBendCallback(onPitchbend);
-
+  
   Debug.println("Intializing client");
-  BLEMidiClient.begin("Piano Lights Client");
   BLEMidiClient.setNoteOnCallback(onClientNoteOn);
   BLEMidiClient.setNoteOffCallback(onClientNoteOff);
 
-  // BLEMidiClient.enableDebugging(); // Uncomment to see debugging messages from the library
+  BLEMidiClient.enableDebugging(); // Uncomment to see debugging messages from the library
 
-  SPIFFS.begin(false, "/spiffs", 4);
+  SPIFFS.begin(false, "/spiffs", 64);
+//   File root = SPIFFS.open("/");
+//   File file = root.openNextFile();
+//   while(file){
+ 
+//       Debug.print("FILE: ");
+//       Debug.println(file.name());
+ 
+//       file = root.openNextFile();
+// }
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
+  server.on("/getJSON", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
+              Debug.print("getJSON: ");
+              Debug.println(options.json());
+              request->send(200, "text/json", options.json());
+            });
   server.on("/startMidi", HTTP_POST, [](AsyncWebServerRequest *request)
             {
+              Debug.write("startMidi");
               connectToPiano();
               return request->send(200, "text/json", options.json()); });
-  server.on("/setPattern", HTTP_POST, [](AsyncWebServerRequest *request) 
+  server.on("/setPattern", HTTP_POST, [](AsyncWebServerRequest *request)
             { 
+              Debug.write("setPattern");
               String message;
               if (request->hasParam("pattern")) {
                 message = request->getParam("pattern")->value();
@@ -169,10 +217,10 @@ void setup()
               byte id = message.toInt();
               ledStrip.setPattern(id); 
 
-              request->send(200, "text/json", options.json());
-            });
-  server.on("/setSparkle", HTTP_POST, [](AsyncWebServerRequest *request) 
+              request->send(200, "text/json", options.json()); });
+  server.on("/setSparkle", HTTP_POST, [](AsyncWebServerRequest *request)
             { 
+              Debug.write("setSparkle");
               String message;
               if (request->hasParam("sparkle")) {
                 message = request->getParam("sparkle")->value();
@@ -182,24 +230,38 @@ void setup()
               message.toLowerCase(); 
               options.setSparkle(message=="true");
 
-              request->send(200, "text/json", options.json());
-            });
-  
-  server.on("/polyfills.js", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/www/polyfills.js", "text/javascript");});
-  server.on("/main.js", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/www/main.js", "text/javascript");});
-  server.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/www/styles.css", "text/css");});
-  
-  server.serveStatic("/", SPIFFS, "/www/").setDefaultFile("index.html");
+              request->send(200, "text/json", options.json()); });
+  server.on("/setColor", HTTP_POST, [](AsyncWebServerRequest *request) 
+            {
+              Debug.write("setColor");
+              
+              char buffer[20];
 
+              String rs;
+              String gs;
+              String bs;
+              if (request->hasParam("r") && request->hasParam("g") && request->hasParam("b")) {
+                rs = request->getParam("r")->value();
+                gs = request->getParam("g")->value();
+                bs = request->getParam("b")->value();
+              } else {
+                request->send(400, "text/plain", "No value");
+              }
+
+              int r = (int)rs.toInt(); 
+              int g = (int)gs.toInt(); 
+              int b = (int)bs.toInt(); 
+
+              options.setColor( r, g, b);
+
+              request->send(200, "text/json", options.json()); });
+
+  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
   server.onNotFound(notFound);
 
   server.begin();
 }
 
-// unsigned long clientNextTry = 0;
 bool WiFiConnected = false;
 
 void loop()
@@ -211,12 +273,12 @@ void loop()
   {
     ledStrip.run();
 
-    if (button.singleClick() == true)
+    if (button.singleClick())
     {
       Debug.println("Next Pattern");
       ledStrip.nextPattern();
     }
-    if (button.longPress() == true)
+    if (button.longPress())
     {
       Debug.println("Client Connect");
       connectToPiano();
@@ -229,5 +291,12 @@ void loop()
     WiFiConnected = true;
     Debug.print("IP address: ");
     Debug.println(WiFi.localIP());
+    if (!MDNS.begin(mDSNName)) {
+      Debug.println("Error setting up mDNS");
+    } else {
+      Debug.print("mDNS: ");
+      Debug.print(mDSNName);
+      Debug.println(".local");
+    }
   }
 }

@@ -11,7 +11,8 @@
             "fstream": "cpp",
             "istream": "cpp",
             "ostream": "cpp",
-            "sstream": "cpp"
+            "sstream": "cpp",
+            "system_error": "cpp"
         }
     }
 }

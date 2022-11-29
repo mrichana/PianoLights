@@ -36,12 +36,14 @@ public:
   LedStrip();
   ~LedStrip();
 
+  void init();
+
   void reset();
 
   void nextPattern();
   void setPattern(byte visualizerId);
   void run();
-  void ledOn(byte ledNumber);
+  void ledOn(byte ledNumber, byte r=255, byte g=255, byte b=255);
   void ledOff(byte ledNumber);
   void ledOnFromNote(byte note, byte intensity = 127);
   void ledOffFromNote(byte note, byte intensity =127);
