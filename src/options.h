@@ -13,9 +13,10 @@ class Options {
 
     private:
     char buffer[1000] = "";
-    unsigned char visualizerId = 2;
+    byte visualizerId = 2;
     bool sparkle = false;
-    RGB color;
+    RGB color[3];
+    byte brightness;
 
     
     
@@ -23,12 +24,14 @@ class Options {
     Options();
     char* json();
     void init();
-    void setVisualizerId(unsigned char value);
-    unsigned char getVisualizerId();
+    void setVisualizerId(byte value);
+    byte getVisualizerId();
     void setSparkle(bool value);
     bool getSparkle();
-    void setColor(byte r, byte g, byte b);
-    RGB getColor();
+    void setBrightness(byte value);
+    byte getBrightness();
+    void setColor(byte o, byte r, byte g, byte b);
+    RGB getColor(byte o);
 
     bool midiConnected = false;
 

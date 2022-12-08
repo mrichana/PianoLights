@@ -16,9 +16,12 @@ void Options::init()
         preferences.begin("PianoLights");
         visualizerId = preferences.getUChar("visualizerId", 0);
         sparkle = preferences.getBool("sparkle", false);
-        color.R = preferences.getUShort("color_r", 128);
-        color.G = preferences.getUShort("color_g", 128);
-        color.B = preferences.getUShort("color_b", 128);
+        brightness = preferences.getUChar("brightness", 127);
+        for (int i=0; i < 3; i++) {
+            color[i].R = preferences.getUChar("color_r_"+i, 127);
+            color[i].G = preferences.getUChar("color_g_"+i, 127);
+            color[i].B = preferences.getUChar("color_b_"+i, 127);
+        }
         preferences.end();
         init = true;
     };
@@ -26,11 +29,18 @@ void Options::init()
 
 char *Options::json()
 {
-    sprintf(buffer, "{\"visualizerId\":%u, \"sparkle\":%s, \"midiConnected\":%s, \"red\":%u, \"green\":%u, \"blue\":%u}", visualizerId, sparkle ? "true" : "false", midiConnected ? "true" : "false", color.R<<1, color.G<<1, color.B);
+    sprintf(buffer, "{\"visualizerId\":%u, \"sparkle\":%s, \"midiConnected\":%s, \"brightness\":%u, "
+                    "\"custom0Red\":%u, \"custom0Green\":%u, \"custom0Blue\":%u, "
+                    "\"custom1Red\":%u, \"custom1Green\":%u, \"custom1Blue\":%u, "
+                    "\"custom2Red\":%u, \"custom2Green\":%u, \"custom2Blue\":%u}",
+                    visualizerId, sparkle ? "true" : "false", midiConnected ? "true" : "false", brightness,
+                    color[0].R, color[0].G, color[0].B, 
+                    color[1].R, color[1].G, color[1].B, 
+                    color[2].R, color[2].G, color[2].B);
     return buffer;
 }
 
-void Options::setVisualizerId(unsigned char value)
+void Options::setVisualizerId(byte value)
 {
     visualizerId = value;
     preferences.begin("PianoLights");
@@ -38,7 +48,7 @@ void Options::setVisualizerId(unsigned char value)
     preferences.end();
 }
 
-unsigned char Options::getVisualizerId()
+byte Options::getVisualizerId()
 {
     return visualizerId;
 }
@@ -56,21 +66,32 @@ bool Options::getSparkle()
     return sparkle;
 }
 
-void Options::setColor(byte r, byte g, byte b)
+void Options::setBrightness(byte value)
 {
-    color.R = r>>1;
-    color.G = g>>1;
-    color.B = b>>1;
+    brightness = value;
     preferences.begin("PianoLights");
-    preferences.putUShort("color_r", r);
-    preferences.putUShort("color_g", g);
-    preferences.putUShort("color_b", b);
+    preferences.putUChar("brightness", value);
     preferences.end();
 }
 
-Options::RGB Options::getColor()
+byte Options::getBrightness()
 {
-    return color;
+    return brightness;
+}
+
+
+void Options::setColor(byte o, byte r, byte g, byte b)
+{
+    preferences.begin("PianoLights");
+    preferences.putUChar("color_r_"+o, r);
+    preferences.putUChar("color_g_"+o, g);
+    preferences.putUChar("color_b_"+o, b);
+    preferences.end();
+}
+
+Options::RGB Options::getColor(byte o)
+{
+    return color[o];
 }
 
 Options options = Options();

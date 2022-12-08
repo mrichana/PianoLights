@@ -16,6 +16,10 @@ void LedStrip::reset()
     FastLED.show();
 }
 
+void LedStrip::setBrightness(byte brightness){
+    FastLED.setBrightness(brightness);
+}
+
 #pragma region Patterns
 void LedStrip::bpm()
 {
@@ -82,18 +86,20 @@ void LedStrip::sinelon()
 
 void LedStrip::purple()
 {
-    Options::RGB color = options.getColor();
+    Options::RGB color = options.getColor(0);
     fill_solid(leds, NUM_LEDS, CRGB(color.R, color.G, color.B));
 }
 
 void LedStrip::pink()
 {
-    fill_solid(leds, NUM_LEDS, CRGB::HotPink);
+    Options::RGB color = options.getColor(1);
+    fill_solid(leds, NUM_LEDS, CRGB(color.R, color.G, color.B));
 }
 
 void LedStrip::blue()
 {
-    fill_solid(leds, NUM_LEDS, CRGB::Blue);
+    Options::RGB color = options.getColor(2);
+    fill_solid(leds, NUM_LEDS, CRGB(color.R, color.G, color.B));
 }
 
 #pragma endregion
@@ -140,20 +146,23 @@ LedStrip::visualizer LedStrip::getPattern()
     return currentVisualizer;
 }
 
-void LedStrip::nextPattern()
+byte LedStrip::nextPattern()
 {
 //    byte visualizerId = (options.getVisualizerId() >= 8) ? 0 : options.getVisualizerId();
     unsigned char visualizerId = ((options.getVisualizerId() + 1) + (8 + 1)) % (8 + 1);
     setPattern(visualizerId);
+    return visualizerId;
 }
 
-void LedStrip::setPattern(byte visualizerId)
+byte LedStrip::setPattern(byte visualizerId)
 {
     // order: rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, off
-    if (visualizerId < 0 || visualizerId >= 9)
-        return;
+    if (visualizerId < 0 || visualizerId >= 9) {
+        visualizerId = 0;
+    }
 
     options.setVisualizerId(visualizerId);
+    return visualizerId;
 }
 
 void LedStrip::run()
@@ -169,17 +178,29 @@ void LedStrip::run()
     }
 }
 
-void LedStrip::ledOn(byte ledNumber, byte r, byte g, byte b)
+void LedStrip::ledOn(byte ledNumber)
 {
-    leds[(ledNumber>>1)] = CRGB(r, g, b);
-    leds[(ledNumber>>1)+1] = CRGB(r, g, b);
+    leds[(ledNumber*2)] = CRGB::White;
+    leds[(ledNumber*2)+1] = CRGB::White;
+    FastLED.show();
+}
+void LedStrip::ledOn(byte ledNumber, CRGB color)
+{
+    leds[(ledNumber*2)] = color;
+    leds[(ledNumber*2)+1] = color;
+    FastLED.show();
+}
+void LedStrip::ledOn(byte ledNumber, CHSV color)
+{
+    leds[(ledNumber*2)] = color;
+    leds[(ledNumber*2)+1] = color;
     FastLED.show();
 }
 
 void LedStrip::ledOff(byte ledNumber)
 {
-    leds[(ledNumber>>1)] = CRGB::Black;
-    leds[(ledNumber>>1)+1] = CRGB::Black;
+    leds[(ledNumber*2)] = CRGB::Black;
+    leds[(ledNumber*2)+1] = CRGB::Black;
     FastLED.show();
 }
 

@@ -40,10 +40,13 @@ public:
 
   void reset();
 
-  void nextPattern();
-  void setPattern(byte visualizerId);
+  void setBrightness(byte brightness);
+  byte nextPattern();
+  byte setPattern(byte visualizerId);
   void run();
-  void ledOn(byte ledNumber, byte r=255, byte g=255, byte b=255);
+  void ledOn(byte lednumber);
+  void ledOn(byte ledNumber, CRGB color);
+  void ledOn(byte ledNumber, CHSV color);
   void ledOff(byte ledNumber);
   void ledOnFromNote(byte note, byte intensity = 127);
   void ledOffFromNote(byte note, byte intensity =127);

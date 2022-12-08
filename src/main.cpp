@@ -19,6 +19,9 @@ const char *ssid = "mrichana";
 const char *password = "2106009557";
 const char *mDSNName = "pianolights";
 
+bool tryToConnectToPiano = false;
+byte tryToChangePattern = 0xFF;
+
 void ESP32reset()
 {
   ledStrip.reset();
@@ -27,15 +30,21 @@ void ESP32reset()
 
 void notFound(AsyncWebServerRequest *request)
 {
-  request->send(404, "text/plain", "Not found");
+  if (request->method() == HTTP_OPTIONS)
+  {
+    request->send(200);
+  }
+  else
+  {
+    request->send(404, "application/json", "{\"message\":\"Not found\"}");
+  }
 }
 
 #define BUTTON_PIN 18
-Switch button = Switch(BUTTON_PIN);
+Switch button = Switch(BUTTON_PIN, INPUT_PULLUP, false, 50, 500);
 
 void onNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
-  Debug.printf("Note on : channel %d, note %d, velocity %d (timestamp %dms)\n", channel, note, velocity, timestamp);
   if (channel == 15)
   {
     ledStrip.ledOnFromNote(note);
@@ -44,7 +53,6 @@ void onNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestam
 
 void onNoteOff(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
-  Debug.printf("Note off : channel %d, note %d, velocity %d (timestamp %dms)\n", channel, note, velocity, timestamp);
   if (channel == 15)
   {
     ledStrip.ledOffFromNote(note);
@@ -53,38 +61,31 @@ void onNoteOff(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timesta
 
 void onAfterTouchPoly(uint8_t channel, uint8_t note, uint8_t pressure, uint16_t timestamp)
 {
-  Debug.printf("Polyphonic after touch : channel %d, note %d, pressure %d (timestamp %dms)\n", channel, note, pressure, timestamp);
 }
 
 void onControlChange(uint8_t channel, uint8_t controller, uint8_t value, uint16_t timestamp)
 {
-  Debug.printf("Control change : channel %d, controller %d, value %d (timestamp %dms)\n", channel, controller, value, timestamp);
 }
 
 void onProgramChange(uint8_t channel, uint8_t program, uint16_t timestamp)
 {
-  Debug.printf("Program change : channel %d, program %d (timestamp %dms)\n", channel, program, timestamp);
 }
 
 void onAfterTouch(uint8_t channel, uint8_t pressure, uint16_t timestamp)
 {
-  Debug.printf("After touch : channel %d, pressure %d (timestamp %dms)\n", channel, pressure, timestamp);
 }
 
 void onPitchbend(uint8_t channel, uint16_t value, uint16_t timestamp)
 {
-  Debug.printf("Pitch bend : channel %d, value %d (timestamp %dms)\n", channel, value, timestamp);
 }
 
 void onClientNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
-  Debug.printf("Note on : channel %d, note %d, velocity %d (timestamp %dms)\n", channel, note, velocity, timestamp);
   ledStrip.ledOnFromNote(note, velocity);
 }
 
 void onClientNoteOff(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
-  Debug.printf("Note off : channel %d, note %d, velocity %d (timestamp %dms)\n", channel, note, velocity, timestamp);
   ledStrip.ledOffFromNote(note, velocity);
 }
 
@@ -92,11 +93,11 @@ void onMidiConnect()
 {
   if (BLEMidiServer.isConnected())
   {
-    Debug.println("Connected to Tablet");
+    httpDebug::println("Connected to Tablet");
   }
   else
   {
-    Debug.println("Connected to Piano");
+    httpDebug::println("Connected to Piano");
   }
   ledStrip.reset();
 }
@@ -108,60 +109,70 @@ void onMidiDisconnect()
 
 bool connectToPiano()
 {
+  tryToConnectToPiano = false;
   ledStrip.reset();
   btStart();
   BLEMidiClient.begin("Piano Lights Client");
   int nDevices = BLEMidiClient.scan();
   if (nDevices > 0 && BLEMidiClient.connect(0))
   {
-    Debug.println("Piano connection established");
+    httpDebug::println("Piano connection established");
     options.midiConnected = true;
     BLEMidiClient.setNoteOnCallback(onClientNoteOn);
     BLEMidiClient.setNoteOffCallback(onClientNoteOff);
     BLEMidiClient.setOnDisconnectCallback(onMidiDisconnect);
-    ledStrip.ledOn(0, 0, 255, 0);
+    ledStrip.ledOn(0, CRGB::Green);
     delay(200);
     ledStrip.ledOff(0);
     delay(200);
-    ledStrip.ledOn(0, 0, 255, 0);
+    ledStrip.ledOn(0, CRGB::Green);
     delay(200);
     ledStrip.ledOff(0);
     delay(200);
-    ledStrip.ledOn(0, 0, 255, 0);
+    ledStrip.ledOn(0, CRGB::Green);
     delay(200);
     ledStrip.ledOff(0);
   }
   else
   {
-    Debug.println("Piano connection failed");
+    httpDebug::println("Piano connection failed");
     options.midiConnected = false;
-    ledStrip.ledOn(0, 255, 0, 0);
+    ledStrip.ledOn(0, CRGB::Red);
     delay(200);
     ledStrip.ledOff(0);
     delay(200);
-    ledStrip.ledOn(0, 255, 0, 0);
+    ledStrip.ledOn(0, CRGB::Red);
     delay(200);
     ledStrip.ledOff(0);
     delay(200);
-    ledStrip.ledOn(0, 255, 0, 0);
+    ledStrip.ledOn(0, CRGB::Red);
     delay(200);
     ledStrip.ledOff(0);
     ESP32reset();
-   }
+  }
   return options.midiConnected;
+}
+
+void showLedPattern(byte patternId)
+{
+  ledStrip.reset();
+  ledStrip.ledOn(patternId + 1, CHSV(255 / (patternId + 1), 255, 255));
+  delay(600);
+  ledStrip.ledOff(patternId + 1);
+  delay(200);
 }
 
 void setup()
 {
   btStop();
 
-  // Debug.begin("PianoLights Debug");
-  Debug.begin(115200);
+  // httpDebug.begin("PianoLights Debug");
+  // httpDebug.begin(115200);
   options.init();
   ledStrip.init();
-  Debug.println(options.json());
+  httpDebug::println(options.json());
 
-  //BLEMidiServer.begin("Piano Lights");
+  // BLEMidiServer.begin("Piano Lights");
 
   BLEMidiServer.setOnConnectCallback(onMidiConnect);
   BLEMidiServer.setOnDisconnectCallback(onMidiDisconnect);
@@ -173,86 +184,126 @@ void setup()
   // BLEMidiServer.setProgramChangeCallback(onProgramChange);
   // BLEMidiServer.setAfterTouchCallback(onAfterTouch);
   // BLEMidiServer.setPitchBendCallback(onPitchbend);
-  
-  Debug.println("Intializing client");
+
+  httpDebug::println("Intializing client");
   BLEMidiClient.setNoteOnCallback(onClientNoteOn);
   BLEMidiClient.setNoteOffCallback(onClientNoteOff);
 
-  BLEMidiClient.enableDebugging(); // Uncomment to see debugging messages from the library
+  //BLEMidiClient.enableDebugging(); // Uncomment to see debugging messages from the library
 
   SPIFFS.begin(false, "/spiffs", 64);
-//   File root = SPIFFS.open("/");
-//   File file = root.openNextFile();
-//   while(file){
- 
-//       Debug.print("FILE: ");
-//       Debug.println(file.name());
- 
-//       file = root.openNextFile();
-// }
+  File root = SPIFFS.open("/");
+  // File file = root.openNextFile();
+  // while (file)
+  // {
+  //   httpDebug::print("FILE: ");
+  //   httpDebug::println(file.name());
+
+  //   file = root.openNextFile();
+  // }
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  const byte ERROR = 255;
+
+  server.on("/getDebug", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
+              request->send(200, "text/json", String(httpDebug::getString())); });
+  
   server.on("/getJSON", HTTP_GET, [](AsyncWebServerRequest *request)
             {
-              Debug.print("getJSON: ");
-              Debug.println(options.json());
-              request->send(200, "text/json", options.json());
-            });
+              httpDebug::print("getJSON: ");
+              httpDebug::println(options.json());
+              request->send(200, "text/json", options.json()); });
+
   server.on("/startMidi", HTTP_POST, [](AsyncWebServerRequest *request)
             {
-              Debug.write("startMidi");
+              httpDebug::println("startMidi");
+              tryToConnectToPiano = true;
               connectToPiano();
               return request->send(200, "text/json", options.json()); });
   server.on("/setPattern", HTTP_POST, [](AsyncWebServerRequest *request)
             { 
-              Debug.write("setPattern");
-              String message;
+              httpDebug::print("setPattern :");
+              String message = String((int)ERROR);
               if (request->hasParam("pattern")) {
                 message = request->getParam("pattern")->value();
               } else {
-                request->send(400, "text/plain", "No pattern id");
+                httpDebug::println("ERROR");
+                return request->send(400, "text/plain", "No pattern id");
               }
               byte id = message.toInt();
-              ledStrip.setPattern(id); 
+              tryToChangePattern = id;
+
+              httpDebug::println(String(id).c_str());
 
               request->send(200, "text/json", options.json()); });
   server.on("/setSparkle", HTTP_POST, [](AsyncWebServerRequest *request)
             { 
-              Debug.write("setSparkle");
-              String message;
+              httpDebug::print("setSparkle: ");
+              String message = "error";
               if (request->hasParam("sparkle")) {
                 message = request->getParam("sparkle")->value();
               } else {
-                request->send(400, "text/plain", "No value");
+                httpDebug::println("ERROR");
+                return request->send(400, "text/plain", "No value");
               }
               message.toLowerCase(); 
               options.setSparkle(message=="true");
 
-              request->send(200, "text/json", options.json()); });
-  server.on("/setColor", HTTP_POST, [](AsyncWebServerRequest *request) 
-            {
-              Debug.write("setColor");
-              
-              char buffer[20];
+              httpDebug::println(message.c_str());
 
-              String rs;
-              String gs;
-              String bs;
-              if (request->hasParam("r") && request->hasParam("g") && request->hasParam("b")) {
+              request->send(200, "text/json", options.json()); });
+  server.on("/setBrightness", HTTP_POST, [](AsyncWebServerRequest *request)
+            {
+              httpDebug::print("setBrightness: ");
+              String message = String((int)ERROR);
+              
+              if (request->hasParam("brightness")) {
+                message = request->getParam("brightness")->value();
+              } else {
+                httpDebug::println("ERROR");
+                request->send(400, "text/plain", "No value");
+              }
+              byte brightness = (byte)message.toInt();
+              options.setBrightness(brightness);
+              
+              httpDebug::println(brightness);
+
+              ledStrip.setBrightness(brightness);
+
+              request->send(200, "text/json", options.json()); });
+  server.on("/setColor", HTTP_POST, [](AsyncWebServerRequest *request)
+            {
+              httpDebug::print("setColor: ");
+              
+              String os = String((int)ERROR);
+
+              String rs = "255";
+              String gs = "255";
+              String bs = "255";
+              if (request->hasParam("o") && request->hasParam("r") && request->hasParam("g") && request->hasParam("b")) {
+                os = request->getParam("o")->value();
                 rs = request->getParam("r")->value();
                 gs = request->getParam("g")->value();
                 bs = request->getParam("b")->value();
               } else {
-                request->send(400, "text/plain", "No value");
+                httpDebug::println("ERROR");
+                return request->send(400, "text/plain", "No value");
               }
+
+              int o = (int)os.toInt();
 
               int r = (int)rs.toInt(); 
               int g = (int)gs.toInt(); 
               int b = (int)bs.toInt(); 
 
-              options.setColor( r, g, b);
+              options.setColor( o, r, g, b);
 
               request->send(200, "text/json", options.json()); });
 
@@ -273,14 +324,21 @@ void loop()
   {
     ledStrip.run();
 
-    if (button.singleClick())
+    if (button.pushed())
     {
-      Debug.println("Next Pattern");
-      ledStrip.nextPattern();
+      httpDebug::println("Next Pattern");
+      showLedPattern(ledStrip.nextPattern());
     }
-    if (button.longPress())
+
+    if (tryToChangePattern != 0xFF)
     {
-      Debug.println("Client Connect");
+      showLedPattern(ledStrip.setPattern(tryToChangePattern));
+      tryToChangePattern = 0xFF;
+    }
+
+    if (button.longPress() || tryToConnectToPiano)
+    {
+      httpDebug::println("Client Connect");
       connectToPiano();
     }
     // do some periodic updates
@@ -289,14 +347,17 @@ void loop()
   if (!WiFiConnected && WiFi.isConnected())
   {
     WiFiConnected = true;
-    Debug.print("IP address: ");
-    Debug.println(WiFi.localIP());
-    if (!MDNS.begin(mDSNName)) {
-      Debug.println("Error setting up mDNS");
-    } else {
-      Debug.print("mDNS: ");
-      Debug.print(mDSNName);
-      Debug.println(".local");
+    httpDebug::print("IP address: ");
+    httpDebug::println(WiFi.localIP());
+    if (!MDNS.begin(mDSNName))
+    {
+      httpDebug::println("Error setting up mDNS");
+    }
+    else
+    {
+      httpDebug::print("mDNS: ");
+      httpDebug::print(mDSNName);
+      httpDebug::println(".local");
     }
   }
 }
