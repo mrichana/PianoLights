@@ -30,9 +30,7 @@ void Options::init()
 char *Options::json()
 {
     sprintf(buffer, "{\"visualizerId\":%u, \"sparkle\":%s, \"midiConnected\":%s, \"brightness\":%u, "
-                    "\"custom0Red\":%u, \"custom0Green\":%u, \"custom0Blue\":%u, "
-                    "\"custom1Red\":%u, \"custom1Green\":%u, \"custom1Blue\":%u, "
-                    "\"custom2Red\":%u, \"custom2Green\":%u, \"custom2Blue\":%u}",
+                    "\"customColors\": [{\"Red\":%u, \"Green\":%u, \"Blue\":%u}, {\"Red\":%u, \"Green\":%u, \"Blue\":%u}, {\"Red\":%u, \"Green\":%u, \"Blue\":%u}]}",
                     visualizerId, sparkle ? "true" : "false", midiConnected ? "true" : "false", brightness,
                     color[0].R, color[0].G, color[0].B, 
                     color[1].R, color[1].G, color[1].B, 
@@ -82,6 +80,9 @@ byte Options::getBrightness()
 
 void Options::setColor(byte o, byte r, byte g, byte b)
 {
+    color[o].R = r;
+    color[o].G = g;
+    color[o].B = b;
     preferences.begin("PianoLights");
     preferences.putUChar("color_r_"+o, r);
     preferences.putUChar("color_g_"+o, g);

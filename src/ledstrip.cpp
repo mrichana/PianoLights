@@ -1,4 +1,3 @@
-#include <esp_random.h>
 #include <Arduino.h>
 
 #include "Debug.h"
@@ -16,7 +15,8 @@ void LedStrip::reset()
     FastLED.show();
 }
 
-void LedStrip::setBrightness(byte brightness){
+void LedStrip::setBrightness(byte brightness)
+{
     FastLED.setBrightness(brightness);
 }
 
@@ -49,7 +49,6 @@ void LedStrip::rainbow()
 {
     // FastLED's built-in rainbow generator
     fill_rainbow(leds, NUM_LEDS, gHue, 7);
-
 }
 
 void LedStrip::off()
@@ -72,7 +71,6 @@ void LedStrip::confetti()
     fadeToBlackBy(leds, NUM_LEDS, 10);
     int pos = random16(NUM_LEDS);
     leds[pos] += CHSV(gHue + random8(64), 200, 255);
-
 }
 
 void LedStrip::sinelon()
@@ -81,7 +79,6 @@ void LedStrip::sinelon()
     fadeToBlackBy(leds, NUM_LEDS, 20);
     int pos = beatsin16(13, 0, NUM_LEDS - 1);
     leds[pos] += CHSV(gHue, 255, 192);
-
 }
 
 void LedStrip::purple()
@@ -126,6 +123,7 @@ LedStrip::visualizer LedStrip::getPattern()
             break;
         case 3:
             currentVisualizer = &LedStrip::juggle;
+            break;
         case 4:
             currentVisualizer = &LedStrip::bpm;
             break;
@@ -148,7 +146,7 @@ LedStrip::visualizer LedStrip::getPattern()
 
 byte LedStrip::nextPattern()
 {
-//    byte visualizerId = (options.getVisualizerId() >= 8) ? 0 : options.getVisualizerId();
+    //    byte visualizerId = (options.getVisualizerId() >= 8) ? 0 : options.getVisualizerId();
     unsigned char visualizerId = ((options.getVisualizerId() + 1) + (8 + 1)) % (8 + 1);
     setPattern(visualizerId);
     return visualizerId;
@@ -156,8 +154,8 @@ byte LedStrip::nextPattern()
 
 byte LedStrip::setPattern(byte visualizerId)
 {
-    // order: rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm, off
-    if (visualizerId < 0 || visualizerId >= 9) {
+    if (visualizerId < 0 || visualizerId >= 9)
+    {
         visualizerId = 0;
     }
 
@@ -172,7 +170,8 @@ void LedStrip::run()
     {
         nextMillis = curMillis + period;
         (this->*getPattern())();
-        if (options.getSparkle()) addGlitter(80);
+        if (options.getSparkle())
+            addGlitter(80);
         FastLED.show();
         EVERY_N_MILLISECONDS(20) { gHue++; } // slowly cycle the "base color" through the rainbow
     }
@@ -180,34 +179,52 @@ void LedStrip::run()
 
 void LedStrip::ledOn(byte ledNumber)
 {
-    leds[(ledNumber*2)] = CRGB::White;
-    leds[(ledNumber*2)+1] = CRGB::White;
+    leds[(ledNumber * 2)] = CRGB::White;
+    leds[(ledNumber * 2) + 1] = CRGB::White;
     FastLED.show();
 }
 void LedStrip::ledOn(byte ledNumber, CRGB color)
 {
-    leds[(ledNumber*2)] = color;
-    leds[(ledNumber*2)+1] = color;
+    leds[(ledNumber * 2)] = color;
+    leds[(ledNumber * 2) + 1] = color;
     FastLED.show();
 }
 void LedStrip::ledOn(byte ledNumber, CHSV color)
 {
-    leds[(ledNumber*2)] = color;
-    leds[(ledNumber*2)+1] = color;
+    leds[(ledNumber * 2)] = color;
+    leds[(ledNumber * 2) + 1] = color;
     FastLED.show();
 }
 
 void LedStrip::ledOff(byte ledNumber)
 {
-    leds[(ledNumber*2)] = CRGB::Black;
-    leds[(ledNumber*2)+1] = CRGB::Black;
+    leds[(ledNumber * 2)] = CRGB::Black;
+    leds[(ledNumber * 2) + 1] = CRGB::Black;
     FastLED.show();
+}
+
+long getLedsFromNote(byte note)
+{
+    long ret;
+    if (note < 73)
+    {
+        ret = 174 - ((note - 21) << 1);
+    }
+    else if (note == 73)
+    {
+        ret = 174 - ((note - 21) << 1);
+    }
+    else if (note > 73)
+    {
+        ret = 174 - ((note - 21) << 1) + 1;
+    }
+    return ret;
 }
 
 void LedStrip::ledOnFromNote(byte note, byte intensity)
 {
-    long activeLed = 174 - ((note - 21) << 1 );
-    int hue = esp_random();
+    long activeLed = getLedsFromNote(note);
+    int hue = random16();
     leds[activeLed] = CHSV(hue, 255, intensity);
     leds[activeLed + 1] = CHSV(hue, 255, intensity);
     FastLED.show();
@@ -215,7 +232,8 @@ void LedStrip::ledOnFromNote(byte note, byte intensity)
 
 void LedStrip::ledOffFromNote(byte note, byte intensity)
 {
-    long activeLed = 174 - ((note - 21) << 1);
+    long activeLed = getLedsFromNote(note);
+
     leds[activeLed] = CRGB::Black;
     leds[activeLed + 1] = CRGB::Black;
     FastLED.show();
@@ -232,13 +250,13 @@ LedStrip::~LedStrip()
 void LedStrip::init()
 {
     static bool init = false;
-    if (!init) {
-    setPattern(options.getVisualizerId());
-    FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
-    //FastLED.setBrightness(LedStrip::brightness);
-    FastLED.setMaxPowerInVoltsAndMilliamps(3, 1000);
-    FastLED.setDither(0);
-    init = true;
+    if (!init)
+    {
+        setPattern(options.getVisualizerId());
+        FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+        FastLED.setMaxPowerInVoltsAndMilliamps(VOLTS, AMPS);
+        FastLED.setDither(0);
+        init = true;
     }
 }
 

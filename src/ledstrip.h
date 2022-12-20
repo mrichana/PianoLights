@@ -2,8 +2,13 @@
 #define __INC_LED_H
 
 #include <FastLED.h>
+
 #define NUM_LEDS 176
 #define DATA_PIN 23
+#define VOLTS 3
+// #define VOLTS 5
+// #define DATA_PIN 13
+#define AMPS 1000
 
 class LedStrip
 {

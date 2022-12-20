@@ -1,10 +1,22 @@
 //#define Debug Serial
+#ifndef __INC_DEBUG_H
+#define __INC_DEBUG_H
+
 class httpDebug {
 
+    static bool serialInit;
     static char buffer[5000];
     static int index;
 
     public:
+
+    static void serial(const char* string) {
+        if (!serialInit) {
+            serialInit = true;
+            Serial.begin(115200);
+        }
+        Serial.print(string);
+    }
 
     static char* getString() {
         buffer[index+1]='\0';
@@ -13,6 +25,7 @@ class httpDebug {
     }
 
     static void print(const char* string) {
+        serial(string);
         int i = 0;
         while (string[i] != '\0'){
             index++;
@@ -22,6 +35,8 @@ class httpDebug {
     }
 
     static void println(const char* string) {
+        serial(string);
+        serial("\n");
         int i = 0;
         while (string[i] != '\0'){
             index++;
@@ -39,3 +54,5 @@ class httpDebug {
         println(String(number).c_str());
     }
 };
+
+#endif
