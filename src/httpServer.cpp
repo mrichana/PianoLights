@@ -2,8 +2,21 @@
 #include "debug.h"
 #include "options.h"
 
-#include <AsyncElegantOTA.h>
+//#include <AsyncElegantOTA.h>
+// #define SPIFFSEnable
+
+#ifdef SPIFFSEnable
 #include <SPIFFS.h>
+#else
+#include <pgmspace.h>
+
+#include "page\favicon.h"
+#include "page\index.html.h"
+#include "page\main.js.h"
+#include "page\polyfills.js.h"
+#include "page\runtime.js.h"
+#include "page\styles.css.h"
+#endif
 
 extern bool tryToConnectToPiano;
 extern byte tryToChangePattern;
@@ -12,7 +25,9 @@ const byte ERROR = 255;
 
 HttpServer::HttpServer()
 {
+#ifdef SPIFFSEnable
   SPIFFS.begin(false, "/spiffs", 64);
+#endif
 
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT");
@@ -109,15 +124,51 @@ HttpServer::HttpServer()
               options.setColor( o, r, g, b);
 
               request->send(200, "text/json", options.json()); });
-
+#ifdef SPIFFSEnable
   webserver.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+#else
+  webserver.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request)
+               {
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "text/html", index_html, 1306);
+         response->addHeader("Content-Encoding", "gzip");
+         request->send(response); });
+
+  webserver.on("/main.js", HTTP_GET, [](AsyncWebServerRequest *request)
+               {
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "application/javascript", main_js,132885); //132885
+         response->addHeader("Content-Encoding", "gzip");
+         request->send(response); });
+
+  webserver.on("/polyfills.js", HTTP_GET, [](AsyncWebServerRequest *request)
+               {
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "application/javascript", polyfills_js, 11986);
+         response->addHeader("Content-Encoding", "gzip");
+         request->send(response); });
+
+  webserver.on("/runtime.js", HTTP_GET, [](AsyncWebServerRequest *request)
+               {
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "application/javascript", runtime_js, 646);
+         response->addHeader("Content-Encoding", "gzip");
+         request->send(response); });
+
+  webserver.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request)
+               {
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "text/css", styles_css, 17069);
+         response->addHeader("Content-Encoding", "gzip");
+         request->send(response); });
+
+  webserver.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
+               {
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "image/x-icon", favicon, 2520);
+         response->addHeader("Content-Encoding", "gzip");
+         request->send(response); });
+
+#endif
   webserver.onNotFound([](AsyncWebServerRequest *request)
                        { request->redirect("index.html"); });
 }
 
 void HttpServer::begin()
 {
-  AsyncElegantOTA.begin(&webserver); // Start ElegantOTA
-  
   webserver.begin();
 }
