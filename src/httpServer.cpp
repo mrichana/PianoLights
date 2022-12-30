@@ -19,6 +19,7 @@
 #endif
 
 extern bool tryToConnectToPiano;
+extern bool tryToDisconnectFromPiano;
 extern byte tryToChangePattern;
 
 const byte ERROR = 255;
@@ -46,6 +47,11 @@ HttpServer::HttpServer()
                {
               httpDebug::println("startMidi");
               tryToConnectToPiano = true;
+              return request->send(200, "text/json", options.json()); });
+  webserver.on("/stopMidi", HTTP_POST, [](AsyncWebServerRequest *request)
+               {
+              httpDebug::println("stopMidi");
+              tryToDisconnectFromPiano = true;
               return request->send(200, "text/json", options.json()); });
   webserver.on("/setPattern", HTTP_POST, [](AsyncWebServerRequest *request)
                { 
@@ -129,38 +135,38 @@ HttpServer::HttpServer()
 #else
   webserver.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request)
                {
-    AsyncWebServerResponse* response = request->beginResponse_P(200, "text/html", index_html, 1306);
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "text/html", index_html, sizeof(index_html));
          response->addHeader("Content-Encoding", "gzip");
          request->send(response); });
 
   webserver.on("/main.js", HTTP_GET, [](AsyncWebServerRequest *request)
                {
-    AsyncWebServerResponse* response = request->beginResponse_P(200, "application/javascript", main_js,132885); //132885
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "application/javascript", main_js,sizeof(main_js));
          response->addHeader("Content-Encoding", "gzip");
          request->send(response); });
 
   webserver.on("/polyfills.js", HTTP_GET, [](AsyncWebServerRequest *request)
                {
-    AsyncWebServerResponse* response = request->beginResponse_P(200, "application/javascript", polyfills_js, 11986);
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "application/javascript", polyfills_js, sizeof(polyfills_js));
          response->addHeader("Content-Encoding", "gzip");
          request->send(response); });
 
   webserver.on("/runtime.js", HTTP_GET, [](AsyncWebServerRequest *request)
                {
-    AsyncWebServerResponse* response = request->beginResponse_P(200, "application/javascript", runtime_js, 646);
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "application/javascript", runtime_js, sizeof(runtime_js));
          response->addHeader("Content-Encoding", "gzip");
          request->send(response); });
 
   webserver.on("/styles.css", HTTP_GET, [](AsyncWebServerRequest *request)
                {
-    AsyncWebServerResponse* response = request->beginResponse_P(200, "text/css", styles_css, 17069);
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "text/css", styles_css, sizeof(styles_css));
          response->addHeader("Content-Encoding", "gzip");
          request->send(response); });
 
   webserver.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
                {
-    AsyncWebServerResponse* response = request->beginResponse_P(200, "image/x-icon", favicon, 2520);
-         response->addHeader("Content-Encoding", "gzip");
+    AsyncWebServerResponse* response = request->beginResponse_P(200, "image/x-icon", favicon, sizeof(favicon));
+         //response->addHeader("Content-Encoding", "gzip");
          request->send(response); });
 
 #endif

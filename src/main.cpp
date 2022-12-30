@@ -4,7 +4,6 @@
 #include <avdweb_Switch.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <ESPmDNS.h>
 
 #include "debug.h"
 
@@ -19,6 +18,7 @@ const char *password = "2106009557";
 const char *mDSNName = "pianolights";
 
 volatile bool tryToConnectToPiano = false;
+volatile bool tryToDisconnectFromPiano = false;
 volatile byte tryToChangePattern = 0xFF;
 
 hw_timer_t *timer = NULL;
@@ -141,7 +141,7 @@ void setup()
   ledStrip.init();
   httpDebug::println(options.json());
 
-  btStop();
+  // btStop();
   // BLEMidiServer.begin("Piano Lights");
 
   BLEMidiServer.setOnConnectCallback(onMidiConnect);
@@ -200,22 +200,15 @@ void loop()
 
   } else {
       ledStrip.setBrightness(128);
+      if (tryToDisconnectFromPiano) { // If allready connected it means an http command to disconnect
+        onMidiDisconnect();
+      }
   }
 
   if (!WiFiConnected && WiFi.isConnected())
   {
     WiFiConnected = true;
     httpDebug::print("IP address: ");
-    httpDebug::println(WiFi.localIP());
-    if (!MDNS.begin(mDSNName))
-    {
-      httpDebug::println("Error setting up mDNS");
-    }
-    else
-    {
-      httpDebug::print("mDNS: ");
-      httpDebug::print(mDSNName);
-      httpDebug::println(".local");
-    }
+    httpDebug::println(WiFi.localIP().toString().c_str());
   }
 }
