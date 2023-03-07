@@ -23,8 +23,6 @@ volatile byte tryToChangePattern = 0xFF;
 
 hw_timer_t *timer = NULL;
 
-HttpServer server = HttpServer();
-
 void ESP32reset()
 {
   ledStrip.reset();
@@ -141,8 +139,7 @@ void setup()
   ledStrip.init();
   httpDebug::println(options.json());
 
-  // btStop();
-  // BLEMidiServer.begin("Piano Lights");
+  BLEMidiServer.begin("Piano Lights");
 
   BLEMidiServer.setOnConnectCallback(onMidiConnect);
   BLEMidiServer.setOnDisconnectCallback(onMidiDisconnect);
@@ -166,7 +163,10 @@ bool WiFiConnected = false;
 
 void loop()
 {
+  static unsigned long lastTime = millis();
   unsigned long time = millis();
+  unsigned long elapsedTime = time - lastTime;
+
   button.poll();
 
   static byte lastBrightness = 0;
@@ -201,6 +201,7 @@ void loop()
   } else {
       ledStrip.setBrightness(128);
       if (tryToDisconnectFromPiano) { // If allready connected it means an http command to disconnect
+        httpDebug::println("MidiDisconnect");
         onMidiDisconnect();
       }
   }
@@ -211,4 +212,6 @@ void loop()
     httpDebug::print("IP address: ");
     httpDebug::println(WiFi.localIP().toString().c_str());
   }
+
+  lastTime = time;
 }

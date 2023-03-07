@@ -7,10 +7,15 @@
 class HttpServer {
 
     AsyncWebServer webserver =  AsyncWebServer(80);
+    AsyncEventSource events = AsyncEventSource("/events");
 
     public:
     HttpServer();
     void begin();
+    void sendEvent(const char*);
+    void sendJSON();
 };
+
+extern HttpServer server;
 
 #endif

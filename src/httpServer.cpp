@@ -2,8 +2,8 @@
 #include "debug.h"
 #include "options.h"
 
-//#include <AsyncElegantOTA.h>
-// #define SPIFFSEnable
+// #include <AsyncElegantOTA.h>
+//  #define SPIFFSEnable
 
 #ifdef SPIFFSEnable
 #include <SPIFFS.h>
@@ -34,8 +34,22 @@ HttpServer::HttpServer()
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, PUT");
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  webserver.on("/getDebug", HTTP_GET, [](AsyncWebServerRequest *request)
-               { request->send(200, "text/json", String(httpDebug::getString())); });
+  events.onConnect([this](AsyncEventSourceClient *client)
+                   {
+                     if (client->lastId())
+                     {
+                      //  Debug.printf("Client reconnected! Last message ID that it gat is: %u\n", client->lastId());
+                     }
+                     // send event with message "hello!", id current millis
+                     //  and set reconnect delay to 1 second
+                    //  client->send("connected",NULL,millis(),1000);
+                     this->sendJSON();
+                   });
+
+  webserver.addHandler(&events);
+
+  webserver.on("/getDebug", HTTP_GET, [this](AsyncWebServerRequest *request)
+               { this->sendEvent("test") ;request->send(200, "text/json", String(httpDebug::getString())); });
 
   webserver.on("/getJSON", HTTP_GET, [](AsyncWebServerRequest *request)
                {
@@ -166,7 +180,7 @@ HttpServer::HttpServer()
   webserver.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
                {
     AsyncWebServerResponse* response = request->beginResponse_P(200, "image/x-icon", favicon, sizeof(favicon));
-         //response->addHeader("Content-Encoding", "gzip");
+         response->addHeader("Content-Encoding", "gzip");
          request->send(response); });
 
 #endif
@@ -178,3 +192,15 @@ void HttpServer::begin()
 {
   webserver.begin();
 }
+
+void HttpServer::sendEvent(const char *event)
+{
+  events.send(event, NULL, millis(), 1000);
+}
+
+void HttpServer::sendJSON()
+{
+  events.send(options.json(), NULL, millis(), 1000);
+}
+
+HttpServer server = HttpServer();
