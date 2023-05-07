@@ -12,7 +12,6 @@ class Options {
     };
 
     private:
-    char buffer[1000] = "";
     byte visualizerId = 2;
     bool sparkle = false;
     RGB color[3];
@@ -22,7 +21,7 @@ class Options {
     
     public:
     Options();
-    char* json();
+    const String json();
     void init();
     void setVisualizerId(byte value);
     byte getVisualizerId();

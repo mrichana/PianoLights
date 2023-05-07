@@ -5,7 +5,7 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 
-#include "debug.h"
+#include "webDebug.h"
 
 #include "options.h"
 
@@ -62,11 +62,11 @@ void onMidiConnect()
 {
   if (BLEMidiServer.isConnected())
   {
-    httpDebug::println("Connected to Tablet");
+    webDebug.println("Connected to Tablet");
   }
   else
   {
-    httpDebug::println("Connected to Piano");
+    webDebug.println("Connected to Piano");
   }
   ledStrip.reset();
 }
@@ -78,14 +78,14 @@ void onMidiDisconnect()
 
 bool connectToPiano()
 {
-  httpDebug::println("Establishing Piano connection");
+  webDebug.println("Establishing Piano connection");
   ledStrip.reset();
   btStart();
   BLEMidiClient.begin("Piano Lights Client");
   int nDevices = BLEMidiClient.scan();
   if (nDevices > 0 && BLEMidiClient.connect(0))
   {
-    httpDebug::println("Piano connection established");
+    webDebug.println("Piano connection established");
     options.midiConnected = true;
     BLEMidiClient.setNoteOnCallback(onClientNoteOn);
     BLEMidiClient.setNoteOffCallback(onClientNoteOff);
@@ -105,7 +105,7 @@ bool connectToPiano()
   }
   else
   {
-    httpDebug::println("Piano connection failed");
+    webDebug.println("Piano connection failed");
     options.midiConnected = false;
     ledStrip.ledOn(0, CRGB::Red);
     delay(200);
@@ -137,8 +137,6 @@ void setup()
 {
   options.init();
   ledStrip.init();
-  httpDebug::println(options.json());
-
   BLEMidiServer.begin("Piano Lights");
 
   BLEMidiServer.setOnConnectCallback(onMidiConnect);
@@ -147,7 +145,7 @@ void setup()
   BLEMidiServer.setNoteOnCallback(onNoteOn);
   BLEMidiServer.setNoteOffCallback(onNoteOff);
 
-  httpDebug::println("Intializing client");
+  webDebug.println("Intializing client");
   BLEMidiClient.setNoteOnCallback(onClientNoteOn);
   BLEMidiClient.setNoteOffCallback(onClientNoteOff);
 
@@ -156,7 +154,10 @@ void setup()
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
 
+  webDebug.println(options.json());
+
   server.begin();
+  webDebug.println("Connecting WiFi...");
 }
 
 bool WiFiConnected = false;
@@ -182,7 +183,7 @@ void loop()
 
     if (button.singleClick())
     {
-      httpDebug::println("Next Pattern");
+      webDebug.println("Next Pattern");
       showLedPattern(ledStrip.nextPattern());
     }
 
@@ -194,24 +195,30 @@ void loop()
 
     if (button.longPress() || tryToConnectToPiano)
     {
-      httpDebug::println("Client Connect");
+      webDebug.println("Client Connect");
       connectToPiano();
     }
 
   } else {
       ledStrip.setBrightness(128);
       if (tryToDisconnectFromPiano) { // If allready connected it means an http command to disconnect
-        httpDebug::println("MidiDisconnect");
+        webDebug.println("MidiDisconnect");
         onMidiDisconnect();
       }
+  }
+
+  if (!WiFiConnected) 
+  {
+    webDebug.print(".");
   }
 
   if (!WiFiConnected && WiFi.isConnected())
   {
     WiFiConnected = true;
-    httpDebug::print("IP address: ");
-    httpDebug::println(WiFi.localIP().toString().c_str());
-  }
+    webDebug.println("");
+    webDebug.print("IP address: ");
+    webDebug.println(WiFi.localIP().toString());
+  } 
 
   lastTime = time;
 }

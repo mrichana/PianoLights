@@ -30,14 +30,12 @@ void Options::init()
     };
 }
 
-char *Options::json()
+const String Options::json()
 {
-    sprintf(buffer, "{\"visualizerId\":%u, \"sparkle\":%s, \"midiConnected\":%s, \"brightness\":%u, "
-                    "\"customColors\": [{\"Red\":%u, \"Green\":%u, \"Blue\":%u}, {\"Red\":%u, \"Green\":%u, \"Blue\":%u}, {\"Red\":%u, \"Green\":%u, \"Blue\":%u}]}",
-            visualizerId, sparkle ? "true" : "false", midiConnected ? "true" : "false", brightness,
-            color[0].R, color[0].G, color[0].B,
-            color[1].R, color[1].G, color[1].B,
-            color[2].R, color[2].G, color[2].B);
+    String buffer = "{\"visualizerId\":" + String(visualizerId) + ", \"sparkle\":"+ (sparkle ? "true" : "false") + ", \"midiConnected\":" + (midiConnected ? "true" : "false") 
+    +", \"brightness\": " + String(brightness) + ", \"customColors\": [{\"Red\": "+ String(color[0].R) + ", \"Green\":" + String(color[0].G) + ", \"Blue\":" + String(color[0].B) 
+    + "}, {\"Red\":" + String(color[1].R) + ", \"Green\":" + String(color[1].G) + ", \"Blue\": " + String(color[1].B) 
+    + "}, {\"Red\":" + String(color[2].R) + ", \"Green\":" + String(color[2].R) + ", \"Blue\":" + String(color[2].B) + "}]}";
     return buffer;
 }
 

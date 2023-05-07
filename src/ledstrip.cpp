@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#include "Debug.h"
+#include "webDebug.h"
 
 #include "options.h"
 #include "ledstrip.h"

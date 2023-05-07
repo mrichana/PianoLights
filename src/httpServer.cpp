@@ -1,5 +1,5 @@
 #include "httpServer.h"
-#include "debug.h"
+#include "webDebug.h"
 #include "options.h"
 
 // #include <AsyncElegantOTA.h>
@@ -49,76 +49,81 @@ HttpServer::HttpServer()
   webserver.addHandler(&events);
 
   webserver.on("/getDebug", HTTP_GET, [this](AsyncWebServerRequest *request)
-               { this->sendEvent("test") ;request->send(200, "text/json", String(httpDebug::getString())); });
+              { 
+                webDebug.println("getDebug:");
+                webDebug.println(webDebug.getString().c_str());
+                this->sendEvent("Debug") ;
+                request->send(200, "text/json", webDebug.getString()); 
+              });
 
   webserver.on("/getJSON", HTTP_GET, [](AsyncWebServerRequest *request)
                {
-              httpDebug::print("getJSON: ");
-              httpDebug::println(options.json());
+              webDebug.print("getJSON: ");
+              webDebug.println(options.json());
               request->send(200, "text/json", options.json()); });
 
   webserver.on("/startMidi", HTTP_POST, [](AsyncWebServerRequest *request)
                {
-              httpDebug::println("startMidi");
+              webDebug.println("startMidi");
               tryToConnectToPiano = true;
               return request->send(200, "text/json", options.json()); });
   webserver.on("/stopMidi", HTTP_POST, [](AsyncWebServerRequest *request)
                {
-              httpDebug::println("stopMidi");
+              webDebug.println("stopMidi");
               tryToDisconnectFromPiano = true;
               return request->send(200, "text/json", options.json()); });
   webserver.on("/setPattern", HTTP_POST, [](AsyncWebServerRequest *request)
                { 
-              httpDebug::print("setPattern :");
+              webDebug.print("setPattern :");
               String message = String((int)ERROR);
               if (request->hasParam("pattern")) {
                 message = request->getParam("pattern")->value();
               } else {
-                httpDebug::println("ERROR");
+                webDebug.println("ERROR");
                 return request->send(400, "text/plain", "No pattern id");
               }
               byte id = message.toInt();
               tryToChangePattern = id;
 
-              httpDebug::println(String(id).c_str());
+              webDebug.println(String(id).c_str());
 
               request->send(200, "text/json", options.json()); });
   webserver.on("/setSparkle", HTTP_POST, [](AsyncWebServerRequest *request)
                { 
-              httpDebug::print("setSparkle: ");
+              webDebug.print("setSparkle: ");
               String message = "error";
               if (request->hasParam("sparkle")) {
                 message = request->getParam("sparkle")->value();
               } else {
-                httpDebug::println("ERROR");
+                webDebug.println("ERROR");
                 return request->send(400, "text/plain", "No value");
               }
               message.toLowerCase(); 
               options.setSparkle(message=="true");
 
-              httpDebug::println(message.c_str());
+              webDebug.println(message.c_str());
 
               request->send(200, "text/json", options.json()); });
   webserver.on("/setBrightness", HTTP_POST, [](AsyncWebServerRequest *request)
                {
-              httpDebug::print("setBrightness: ");
+              webDebug.print("setBrightness: ");
               String message = String((int)ERROR);
               
               if (request->hasParam("brightness")) {
                 message = request->getParam("brightness")->value();
               } else {
-                httpDebug::println("ERROR");
+                webDebug.println("ERROR");
                 request->send(400, "text/plain", "No value");
               }
               byte brightness = (byte)message.toInt();
               options.setBrightness(brightness);
               
-              httpDebug::println(brightness);
+              webDebug.println(brightness);
 
               request->send(200, "text/json", options.json()); });
   webserver.on("/setColor", HTTP_POST, [](AsyncWebServerRequest *request)
                {
-              httpDebug::print("setColor: ");
+              webDebug.print("setColor: ");
               
               String os = String((int)ERROR);
 
@@ -131,7 +136,7 @@ HttpServer::HttpServer()
                 gs = request->getParam("g")->value();
                 bs = request->getParam("b")->value();
               } else {
-                httpDebug::println("ERROR");
+                webDebug.println("ERROR");
                 return request->send(400, "text/plain", "No value");
               }
 
@@ -200,7 +205,7 @@ void HttpServer::sendEvent(const char *event)
 
 void HttpServer::sendJSON()
 {
-  events.send(options.json(), NULL, millis(), 1000);
+  events.send(options.json().c_str(), NULL, millis(), 1000);
 }
 
 HttpServer server = HttpServer();
