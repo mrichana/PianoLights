@@ -2,6 +2,8 @@
 
 #include <BLEMidi.h>
 #include <avdweb_Switch.h>
+
+// #include <mdns.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 
@@ -34,6 +36,13 @@ Switch button = Switch(BUTTON_PIN);
 
 void onNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
+  webDebug.print("Note: ");
+  webDebug.print(channel);
+  webDebug.print(", ");
+  webDebug.print(note);
+  webDebug.print(", ");
+  webDebug.print(velocity);
+  webDebug.println("");
   if (channel == 15)
   {
     ledStrip.ledOnFromNote(note);
@@ -50,6 +59,14 @@ void onNoteOff(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timesta
 
 void onClientNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
+  webDebug.print("Client Note: ");
+  webDebug.print(channel);
+  webDebug.print(", ");
+  webDebug.print(note);
+  webDebug.print(", ");
+  webDebug.print(velocity);
+  webDebug.println("");
+
   ledStrip.ledOnFromNote(note, velocity);
 }
 
@@ -80,7 +97,6 @@ bool connectToPiano()
 {
   webDebug.println("Establishing Piano connection");
   ledStrip.reset();
-  btStart();
   BLEMidiClient.begin("Piano Lights Client");
   int nDevices = BLEMidiClient.scan();
   if (nDevices > 0 && BLEMidiClient.connect(0))
@@ -149,10 +165,11 @@ void setup()
   BLEMidiClient.setNoteOnCallback(onClientNoteOn);
   BLEMidiClient.setNoteOffCallback(onClientNoteOff);
 
-  // BLEMidiClient.enableDebugging(); // Uncomment to see debugging messages from the library
+  BLEMidiClient.enableDebugging(); // Uncomment to see debugging messages from the library
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+  // mdns_init();
 
   webDebug.println(options.json());
 
@@ -218,6 +235,11 @@ void loop()
     webDebug.println("");
     webDebug.print("IP address: ");
     webDebug.println(WiFi.localIP().toString());
+    // mdns_hostname_set(mDSNName);
+    // webDebug.print("IP name: ");
+    // webDebug.print("http://");
+    // webDebug.println(mDSNName);
+    
   } 
 
   lastTime = time;
