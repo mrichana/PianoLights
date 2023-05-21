@@ -12,49 +12,33 @@
 
 class LedStrip
 {
-  typedef void (LedStrip::*SimplePatternList[])();
-  static const byte brightness = 10, framesPerSecond = 90;
-  static const unsigned long period = 1000/framesPerSecond;
   CRGBArray<NUM_LEDS> leds;
-  byte gHue = 0;                  // rotating "base color" used by many of the patterns
-
-  // List of patterns to cycle through.  Each is defined as a separate function below.
-  void bpm();
-  void juggle();
-  void rainbow();
-  void off();
-  void addGlitter(fract8 chanceOfGlitter);
-  void rainbowWithGlitter();
-  void confetti();
-  void sinelon();
-  void purple();
-  void pink();
-  void blue();
-
-  typedef void (LedStrip::*visualizer)();
-
-  LedStrip::visualizer getPattern();
-
-  unsigned long nextMillis = 0;
 
 public:
+  enum LightType
+  {
+    random,
+    rainbow,
+    red,
+    blue,
+    green,
+    white
+  };
+
   LedStrip();
   ~LedStrip();
 
-  void init();
+  void setup();
 
   void reset();
 
   void setBrightness(byte brightness);
-  byte nextPattern();
-  byte setPattern(byte visualizerId);
-  void run();
   void ledOn(byte lednumber);
   void ledOn(byte ledNumber, CRGB color);
   void ledOn(byte ledNumber, CHSV color);
   void ledOff(byte ledNumber);
-  void ledOnFromNote(byte note, byte intensity = 127);
-  void ledOffFromNote(byte note, byte intensity =127);
+  void ledOnFromNote(byte note, byte intensity, LightType lighttype);
+  void ledOffFromNote(byte note);
 };
 
 extern LedStrip ledStrip;
