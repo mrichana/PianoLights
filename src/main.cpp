@@ -1,246 +1,122 @@
 #include <Arduino.h>
-
+#include <NimBLEDevice.h>
 #include <BLEMidi.h>
-#include <avdweb_Switch.h>
-
-// #include <mdns.h>
-#include <WiFi.h>
-#include <WiFiClient.h>
-
-#include "webDebug.h"
-
-#include "options.h"
 
 #include "ledstrip.h"
 
-#include "httpServer.h"
-
-const char *ssid = "mrichana";
-const char *password = "2106009557";
-const char *mDSNName = "pianolights";
-
-volatile bool tryToConnectToPiano = false;
-volatile bool tryToDisconnectFromPiano = false;
-volatile byte tryToChangePattern = 0xFF;
-
 hw_timer_t *timer = NULL;
 
-void ESP32reset()
-{
-  ledStrip.reset();
-  ESP.restart();
-}
+#pragma region midi
 
-#define BUTTON_PIN 18
-Switch button = Switch(BUTTON_PIN);
-
-void onNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
+void onTabletNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
-  webDebug.print("Note: ");
-  webDebug.print(channel);
-  webDebug.print(", ");
-  webDebug.print(note);
-  webDebug.print(", ");
-  webDebug.print(velocity);
-  webDebug.println("");
-  if (channel == 15)
+  if (channel == 0)
   {
-    ledStrip.ledOnFromNote(note);
+    ledStrip.ledOnFromNote(note, 127, LedStrip::LightType::rainbow);
+  }
+  else
+  {
+    BLEMidiClient.noteOn(channel, note, velocity);
   }
 }
 
-void onNoteOff(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
+void onTabletNoteOff(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
-  if (channel == 15)
+  if (channel == 0)
   {
     ledStrip.ledOffFromNote(note);
   }
+  else
+  {
+    BLEMidiClient.noteOff(channel, note, velocity);
+  }
 }
 
-void onClientNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
+void onPianoNoteOff(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
-  webDebug.print("Client Note: ");
-  webDebug.print(channel);
-  webDebug.print(", ");
-  webDebug.print(note);
-  webDebug.print(", ");
-  webDebug.print(velocity);
-  webDebug.println("");
-
-  ledStrip.ledOnFromNote(note, velocity);
+  if (!BLEMidiServer.isConnected())
+  {
+    ledStrip.ledOffFromNote(note);
+  }
+  else
+  {
+    BLEMidiServer.noteOff(channel, note, velocity);
+  }
 }
 
-void onClientNoteOff(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
+void onPianoNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
 {
-  ledStrip.ledOffFromNote(note, velocity);
+  if (velocity == 0)
+  {
+    onPianoNoteOff(channel, note, velocity, timestamp);
+    return;
+  }
+  if (!BLEMidiServer.isConnected())
+  {
+    ledStrip.ledOnFromNote(note, velocity, LedStrip::LightType::rainbow);
+  }
+  else
+  {
+    BLEMidiServer.noteOn(channel, note, velocity);
+  }
+}
+
+void onControlChange (uint8_t channel, uint8_t controller, uint8_t value, uint16_t timestamp)
+{
+  if (BLEMidiServer.isConnected())
+  {
+    BLEMidiServer.controlChange(channel, controller, value);
+  }
+}
+
+void onProgramChange (uint8_t channel, uint8_t progarm, uint16_t timestamp)
+{
 }
 
 void onMidiConnect()
 {
+  if (BLEMidiClient.isConnected())
+  {
+  }
   if (BLEMidiServer.isConnected())
   {
-    webDebug.println("Connected to Tablet");
+    ledStrip.reset();
   }
-  else
-  {
-    webDebug.println("Connected to Piano");
-  }
-  ledStrip.reset();
 }
 
 void onMidiDisconnect()
 {
-  ESP32reset();
+  ledStrip.reset();
+  esp_restart();
 }
 
-bool connectToPiano()
-{
-  webDebug.println("Establishing Piano connection");
-  ledStrip.reset();
-  BLEMidiClient.begin("Piano Lights Client");
-  int nDevices = BLEMidiClient.scan();
-  if (nDevices > 0 && BLEMidiClient.connect(0))
-  {
-    webDebug.println("Piano connection established");
-    options.midiConnected = true;
-    BLEMidiClient.setNoteOnCallback(onClientNoteOn);
-    BLEMidiClient.setNoteOffCallback(onClientNoteOff);
-    BLEMidiClient.setOnDisconnectCallback(onMidiDisconnect);
-    ledStrip.setBrightness(128);
-    ledStrip.ledOn(0, CRGB::Green);
-    delay(200);
-    ledStrip.ledOff(0);
-    delay(200);
-    ledStrip.ledOn(0, CRGB::Green);
-    delay(200);
-    ledStrip.ledOff(0);
-    delay(200);
-    ledStrip.ledOn(0, CRGB::Green);
-    delay(200);
-    ledStrip.ledOff(0);
-  }
-  else
-  {
-    webDebug.println("Piano connection failed");
-    options.midiConnected = false;
-    ledStrip.ledOn(0, CRGB::Red);
-    delay(200);
-    ledStrip.ledOff(0);
-    delay(200);
-    ledStrip.ledOn(0, CRGB::Red);
-    delay(200);
-    ledStrip.ledOff(0);
-    delay(200);
-    ledStrip.ledOn(0, CRGB::Red);
-    delay(200);
-    ledStrip.ledOff(0);
-    ESP32reset();
-  }
-  tryToConnectToPiano = false;
-  return options.midiConnected;
-}
-
-void showLedPattern(byte patternId)
-{
-  ledStrip.reset();
-  ledStrip.ledOn(patternId + 1, CHSV(255 / (patternId + 1), 255, 255));
-  delay(600);
-  ledStrip.ledOff(patternId + 1);
-  delay(200);
-}
+#pragma endregion
 
 void setup()
 {
-  options.init();
-  ledStrip.init();
+  ledStrip.reset();
+  ledStrip.setup();
+
   BLEMidiServer.begin("Piano Lights");
 
-  BLEMidiServer.setOnConnectCallback(onMidiConnect);
-  BLEMidiServer.setOnDisconnectCallback(onMidiDisconnect);
+  BLEMidiServer.setOnConnectCallback(&onMidiConnect);
+  BLEMidiServer.setOnDisconnectCallback(&onMidiDisconnect);
 
-  BLEMidiServer.setNoteOnCallback(onNoteOn);
-  BLEMidiServer.setNoteOffCallback(onNoteOff);
+  BLEMidiServer.setNoteOnCallback(&onTabletNoteOn);
+  BLEMidiServer.setNoteOffCallback(&onTabletNoteOff);
+  BLEMidiServer.setControlChangeCallback(&onControlChange);
+  BLEMidiServer.setProgramChangeCallback(&onProgramChange);
 
-  webDebug.println("Intializing client");
-  BLEMidiClient.setNoteOnCallback(onClientNoteOn);
-  BLEMidiClient.setNoteOffCallback(onClientNoteOff);
+  BLEMidiClient.begin("Piano Lights Client");
+  BLEMidiClient.setNoteOnCallback(&onPianoNoteOn);
+  BLEMidiClient.setNoteOffCallback(&onPianoNoteOff);
+  BLEMidiClient.setOnConnectCallback(&onMidiConnect);
+  BLEMidiClient.setOnDisconnectCallback(&onMidiDisconnect);
 
-  BLEMidiClient.enableDebugging(); // Uncomment to see debugging messages from the library
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  // mdns_init();
-
-  webDebug.println(options.json());
-
-  server.begin();
-  webDebug.println("Connecting WiFi...");
+  BLEMidiClient.backgroundScan("Piano BT MIDI A67B");
 }
-
-bool WiFiConnected = false;
 
 void loop()
 {
-  static unsigned long lastTime = millis();
-  unsigned long time = millis();
-  unsigned long elapsedTime = time - lastTime;
-
-  button.poll();
-
-  static byte lastBrightness = 0;
-  if (!BLEMidiServer.isConnected() && !BLEMidiClient.isConnected())
-  {
-    if (lastBrightness != options.getBrightness())
-    {
-      ledStrip.setBrightness(options.getBrightness());
-      lastBrightness = options.getBrightness();
-    }
-
-    ledStrip.run();
-
-    if (button.singleClick())
-    {
-      webDebug.println("Next Pattern");
-      showLedPattern(ledStrip.nextPattern());
-    }
-
-    if (tryToChangePattern != 0xFF)
-    {
-      showLedPattern(ledStrip.setPattern(tryToChangePattern));
-      tryToChangePattern = 0xFF;
-    }
-
-    if (button.longPress() || tryToConnectToPiano)
-    {
-      webDebug.println("Client Connect");
-      connectToPiano();
-    }
-
-  } else {
-      ledStrip.setBrightness(128);
-      if (tryToDisconnectFromPiano) { // If allready connected it means an http command to disconnect
-        webDebug.println("MidiDisconnect");
-        onMidiDisconnect();
-      }
-  }
-
-  if (!WiFiConnected) 
-  {
-    webDebug.print(".");
-  }
-
-  if (!WiFiConnected && WiFi.isConnected())
-  {
-    WiFiConnected = true;
-    webDebug.println("");
-    webDebug.print("IP address: ");
-    webDebug.println(WiFi.localIP().toString());
-    // mdns_hostname_set(mDSNName);
-    // webDebug.print("IP name: ");
-    // webDebug.print("http://");
-    // webDebug.println(mDSNName);
-    
-  } 
-
-  lastTime = time;
+  ledStrip.loop();
 }
