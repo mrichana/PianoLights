@@ -4,8 +4,6 @@
 
 #include "ledstrip.h"
 
-hw_timer_t *timer = NULL;
-
 #pragma region midi
 
 void onTabletNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
