@@ -4,11 +4,11 @@
 #include <FastLED.h>
 
 #define NUM_LEDS 176
-#define DATA_PIN 23
-#define VOLTS 3
-// #define VOLTS 5
-// #define DATA_PIN 13
-#define AMPS 1000
+// #define DATA_PIN 23
+// #define VOLTS 3
+#define VOLTS 5
+#define DATA_PIN 13
+#define AMPS 2500
 
 class LedStrip
 {
@@ -22,13 +22,15 @@ public:
     red,
     blue,
     green,
-    white
+    white,
+    piano
   };
 
   LedStrip();
   ~LedStrip();
 
   void setup();
+  void loop();
 
   void reset();
 
