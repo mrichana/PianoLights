@@ -1,4 +1,4 @@
-#define SSID "WIFI-NAME"
-#define PASWD "WIFI-PASSWORD"
+#define SSID "mrichana-smart"
+#define PASWD "2106009557"
 #define mDNS "pianolights"
-#define PIANO "MIDI DEVICE NAME"
+#define PIANO "Piano BT MIDI A67B"
