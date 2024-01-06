@@ -4,6 +4,12 @@
 
 #include "ledstrip.h"
 
+#include <WiFi.h>
+#include <ESPmDNS.h>
+#include <ArduinoOTA.h>
+
+#include "secrets.h"
+
 #pragma region midi
 
 void onTabletNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t timestamp)
@@ -59,7 +65,7 @@ void onPianoNoteOn(uint8_t channel, uint8_t note, uint8_t velocity, uint16_t tim
   }
 }
 
-void onControlChange (uint8_t channel, uint8_t controller, uint8_t value, uint16_t timestamp)
+void onControlChange(uint8_t channel, uint8_t controller, uint8_t value, uint16_t timestamp)
 {
   if (BLEMidiServer.isConnected())
   {
@@ -67,7 +73,7 @@ void onControlChange (uint8_t channel, uint8_t controller, uint8_t value, uint16
   }
 }
 
-void onProgramChange (uint8_t channel, uint8_t progarm, uint16_t timestamp)
+void onProgramChange(uint8_t channel, uint8_t progarm, uint16_t timestamp)
 {
 }
 
@@ -111,10 +117,28 @@ void setup()
   BLEMidiClient.setOnConnectCallback(&onMidiConnect);
   BLEMidiClient.setOnDisconnectCallback(&onMidiDisconnect);
 
-  BLEMidiClient.backgroundScan("Piano BT MIDI A67B");
+  BLEMidiClient.backgroundScan(PIANO);
+
+  WiFi.begin(SSID, PASWD);
 }
 
 void loop()
 {
+  static bool connected = false;
   ledStrip.loop();
+  if (!connected)
+  {
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      connected = true;
+      MDNS.begin(mDNS);
+      MDNS.addService("http", "tcp", 80);
+
+      ArduinoOTA.begin();
+    }
+  }
+  else
+  {
+    ArduinoOTA.handle();
+  }
 }

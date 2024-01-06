@@ -4,3 +4,4 @@
 .vscode/launch.json
 .vscode/ipch
 PianoLights.code-workspace
+src/secrets.h
