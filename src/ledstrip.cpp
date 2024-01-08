@@ -74,7 +74,7 @@ void LedStrip::ledOnFromNote(byte note, byte intensity, LightType lighttype)
         break;
     case rainbow:
         calc = note % 12;
-        saturation = (!(calc == 1 || calc == 3 || calc == 6 || calc == 8 || calc == 10))*255;
+        saturation = (!(calc == 1 || calc == 3 || calc == 6 || calc == 8 || calc == 10)) * 255;
         hue = calc * 21;
         break;
     case red:
@@ -130,8 +130,10 @@ void LedStrip::setup()
     {
         FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
         FastLED.setMaxPowerInVoltsAndMilliamps(VOLTS, AMPS);
-        FastLED.setDither(0);
+        FastLED.setDither(BINARY_DITHER);
         init = true;
+        FastLED.clear();
+        FastLED.show();
     }
 }
 

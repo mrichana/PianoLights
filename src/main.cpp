@@ -5,7 +5,6 @@
 #include "ledstrip.h"
 
 #include <WiFi.h>
-#include <ESPmDNS.h>
 #include <ArduinoOTA.h>
 
 #include "secrets.h"
@@ -98,7 +97,6 @@ void onMidiDisconnect()
 
 void setup()
 {
-  ledStrip.reset();
   ledStrip.setup();
 
   BLEMidiServer.begin("Piano Lights");
@@ -119,6 +117,7 @@ void setup()
 
   BLEMidiClient.backgroundScan(PIANO);
 
+  WiFi.setHostname(mDNS);
   WiFi.begin(SSID, PASWD);
 }
 
@@ -131,9 +130,6 @@ void loop()
     if (WiFi.status() == WL_CONNECTED)
     {
       connected = true;
-      MDNS.begin(mDNS);
-      MDNS.addService("http", "tcp", 80);
-
       ArduinoOTA.begin();
     }
   }
